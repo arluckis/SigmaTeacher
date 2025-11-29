@@ -12,7 +12,7 @@ O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gr
 
 ---
 
--> Funcionalidades:
+## Funcionalidades:
 
 - **Gravação de Voz:** Interface nativa para gravar aulas diretamente no navegador.
 - **Upload de Arquivos:** Suporte para `.mp3`, `.wav`, `.m4a` e `.ogg`.
