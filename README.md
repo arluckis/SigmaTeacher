@@ -88,7 +88,7 @@ Solução: Aguarde aparecer a mensagem Application startup complete no terminal 
 
 - Infraestrutura: Docker Compose
 
-## -> Licença:
+## Licença:
 ***Projeto desenvolvido como requisito avaliativo da disciplina Inteligência Artificial para Educação (UFRN), sob orientação do Prof. Adelson Dias.***
 
 ***Desenvolvido por:***
@@ -98,7 +98,7 @@ Solução: Aguarde aparecer a mensagem Application startup complete no terminal 
 - VINÍCIUS CÉSAR NEVES DE BRITO E
 - YAGO GOMES DA SILVA.
 
-## -> Capturas de Tela:
+## Capturas de Tela:
 
 <img width="1440" height="900" alt="Captura de Tela 2025-11-29 às 20 11 36" src="https://github.com/user-attachments/assets/1441f089-c431-44f9-9289-f035dab72f8e" />
 <img width="1440" height="900" alt="Captura de Tela 2025-11-29 às 20 11 42" src="https://github.com/user-attachments/assets/983fb5da-dea7-4a99-9c59-15971278e12e" />
