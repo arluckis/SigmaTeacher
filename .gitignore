@@ -1,0 +1,15 @@
+# --- Ignorar Dados e Arquivos Temporários ---
+uploads/
+*.db
+*.sqlite3
+__pycache__/
+.DS_Store
+
+# --- Ignorar Configurações Locais ---
+.env
+.streamlit/secrets.toml
+
+# --- Ignorar Ambientes Virtuais (se tiver) ---
+venv/
+env/
+.venv/

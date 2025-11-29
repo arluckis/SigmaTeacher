@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+requests
+streamlit
+openai-whisper
+python-multipart
+streamlit-mic-recorder
+watchfiles
+Pillow
+torchaudio
+torch
+numpy
+streamlit-mic-recorder

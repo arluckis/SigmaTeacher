@@ -1,0 +1,19 @@
+[theme]
+# A COR DA SUA MARCA (Extraída do "Sigma" e do "T")
+# É um Roxo vibrante que vai ficar lindo nos botões
+primaryColor = "#7D56F4"
+
+# A COR DE FUNDO (Branco puro para destacar sua logo colorida)
+backgroundColor = "#FFFFFF"
+
+# FUNDO DA BARRA LATERAL (Um cinza gelo levemente azulado para combinar)
+secondaryBackgroundColor = "#F7F8FA"
+
+# TEXTO (Cinza chumbo, mais elegante que preto puro)
+textColor = "#262730"
+
+# Fonte padrão moderna
+font = "sans serif"
+
+[server]
+maxUploadSize = 200
