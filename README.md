@@ -8,7 +8,7 @@
 
 > **Plataforma inteligente para transcrição e gestão de aulas usando Inteligência Artificial.**
 
-O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gravar ou fazer upload de suas aulas e obter transcrições precisas automaticamente utilizando o modelo **Whisper da OpenAI**. Todo o histórico é salvo em banco de dados para consulta futura.
+O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gravar suas aulas e obter transcrições precisas automaticamente utilizando o modelo **Whisper da OpenAI**. Todo o histórico é salvo em banco de dados para consulta futura.
 
 ---
 
