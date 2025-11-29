@@ -12,7 +12,7 @@ O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gr
 
 ---
 
-## -> Funcionalidades:
+-> Funcionalidades:
 
 - **Gravação de Voz:** Interface nativa para gravar aulas diretamente no navegador.
 - **Upload de Arquivos:** Suporte para `.mp3`, `.wav`, `.m4a` e `.ogg`.
@@ -22,7 +22,7 @@ O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gr
 
 ---
 
-## -> Tecnologias Utilizadas:
+## Tecnologias Utilizadas:
 
 - **Backend:** Python + FastAPI
 - **Frontend:** Streamlit (Python)
@@ -32,13 +32,13 @@ O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gr
 
 ---
 
-## -> Como rodar o projeto?
+## Como rodar o projeto?
 
 ### Pré-requisitos
 
 - Ter o Docker Desktop instalado e rodando.
 
-### Passo a Passo
+### Passo a Passo:
 
 ***1. Clone o repositório***
 
@@ -59,7 +59,7 @@ docker-compose up --build
 
 Acesse a aplicação Abra seu navegador e acesse: 👉 http://localhost:8501
 
-## -> Solução de Problemas (Troubleshooting)
+## Solução de Problemas:
 ***O Backend cai com erro "Killed" ou "Exit Code 137"***
 
 
@@ -77,7 +77,7 @@ Motivo: Significa que o Backend ainda não terminou de carregar o modelo de IA.
 
 Solução: Aguarde aparecer a mensagem Application startup complete no terminal antes de tentar transcrever.
 
-## -> Tecnologias
+## Tecnologias:
 - Backend: Python 3.10, FastAPI, Uvicorn
 
 - Frontend: Streamlit, Streamlit-Mic-Recorder
@@ -88,7 +88,7 @@ Solução: Aguarde aparecer a mensagem Application startup complete no terminal 
 
 - Infraestrutura: Docker Compose
 
-## -> Licença
+## -> Licença:
 ***Projeto desenvolvido como requisito avaliativo da disciplina Inteligência Artificial para Educação (UFRN), sob orientação do Prof. Adelson Dias.***
 
 ***Desenvolvido por:***
