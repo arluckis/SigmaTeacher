@@ -6,6 +6,7 @@ import whisper
 import shutil
 import os
 import uuid # Para gerar nomes únicos para os arquivos
+from typing import List
 
 # --- 1. CONFIGURAÇÃO DO BANCO DE DADOS (SQLite) ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./meus_audios.db"
@@ -86,3 +87,11 @@ async def processar_audio(file: UploadFile = File(...), db: Session = Depends(ge
 def listar(db: Session = Depends(get_db)):
     audios = db.query(AudioLog).all()
     return audios
+
+
+@app.post("/upload-arquivo")
+async def upload_arquivos(files: List[UploadFile] = File(...), listAudios: List[int] = [], db: Session = Depends(get_db)):
+    for file in files:
+        print(file.name)
+    for id in listAudios:
+        print(id)
