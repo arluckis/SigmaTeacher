@@ -8,6 +8,7 @@ __pycache__/
 # --- Ignorar Configurações Locais ---
 .env
 .streamlit/secrets.toml
+.vscode/
 
 # --- Ignorar Ambientes Virtuais (se tiver) ---
 venv/

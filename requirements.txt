@@ -12,3 +12,5 @@ torchaudio
 torch
 numpy
 streamlit-mic-recorder
+python-dotenv
+google-generativeai
