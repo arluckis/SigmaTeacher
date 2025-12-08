@@ -1,4 +1,4 @@
-# Sigma Teacher 
+# Sigma Teacher
 
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
@@ -40,28 +40,26 @@ O **Sigma Teacher** é uma aplicação Full-Stack que permite aos professores gr
 
 ### Passo a Passo:
 
-***1. Clone o repositório***
+**_1. Clone o repositório_**
 
 ```Bash
-git clone [https://github.com/SEU_USUARIO/sigma-teacher.git](https://github.com/SEU_USUARIO/sigma-teacher.git)
+git clone [https://github.com/arluckis/SigmaTeacher.git](https://github.com/arluckis/SigmaTeacher.git)
 cd sigma-teacher
 ```
 
-
-***2. Suba os containers***
+**_2. Suba os containers_**
 
 ```Bash
 docker-compose up --build
 ```
-
 
 - Nota: Na primeira execução, o sistema irá baixar a imagem Linux e o modelo de IA (aprox. 1GB).
 
 Acesse a aplicação Abra seu navegador e acesse: 👉 http://localhost:8501
 
 ## Solução de Problemas:
-***O Backend cai com erro "Killed" ou "Exit Code 137"***
 
+**_O Backend cai com erro "Killed" ou "Exit Code 137"_**
 
 - Motivo: Isso ocorre porque o modelo de IA consome muita memória RAM.
 
@@ -71,13 +69,14 @@ Aumente o limite de Memory para pelo menos 4GB.
 
 Reinicie os containers.
 
-***O Frontend mostra erro "Connection Refused"***
+**_O Frontend mostra erro "Connection Refused"_**
 
-Motivo: Significa que o Backend ainda não terminou de carregar o modelo de IA. 
+Motivo: Significa que o Backend ainda não terminou de carregar o modelo de IA.
 
 Solução: Aguarde aparecer a mensagem Application startup complete no terminal antes de tentar transcrever.
 
 ## Tecnologias:
+
 - Backend: Python 3.10, FastAPI, Uvicorn
 
 - Frontend: Streamlit, Streamlit-Mic-Recorder
@@ -89,9 +88,10 @@ Solução: Aguarde aparecer a mensagem Application startup complete no terminal 
 - Infraestrutura: Docker Compose
 
 ## Licença:
-***Projeto desenvolvido como requisito avaliativo da disciplina Inteligência Artificial para Educação (UFRN), sob orientação do Prof. Adelson Dias.***
 
-***Desenvolvido por:***
+**_Projeto desenvolvido como requisito avaliativo da disciplina Inteligência Artificial para Educação (UFRN), sob orientação do Prof. Adelson Dias._**
+
+**_Desenvolvido por:_**
 
 - LUCAS RAFAEL ARRUDA DE AMORIM;
 - MARIANA RAQUEL DE MORAIS;

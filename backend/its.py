@@ -1,5 +1,29 @@
 import json
 import re
+import time
+import google.generativeai as genai
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+if API_KEY is not None:
+    print("API_KEY carregada com sucesso.")
+else:
+    print("API_KEY não encontrada nas variáveis de ambiente.")
+
+genai.configure(api_key=API_KEY)
+llm = genai.GenerativeModel("models/gemini-2.5-flash")
+
+
+def carregar_json(json_str):
+    if not json_str:
+        return {}
+    return json.loads(json_str)
+
+
+def salvar_json(obj_dict):
+    return json.dumps(obj_dict, ensure_ascii=False)
 
 
 def get_text_from_message(message):
@@ -21,73 +45,115 @@ def get_text_from_message(message):
             return ""
 
 
+def upload_e_processar_arquivo(caminho_arquivo):
+    """Faz o upload do arquivo para a API do Gemini e aguarda o processamento."""
+    print(f"--- Uploading: {caminho_arquivo} ---")
+    arquivo = genai.upload_file(caminho_arquivo)
+
+    # Aguardar o arquivo estar ativo (processado)
+    while arquivo.state.name == "PROCESSING":
+        print(".", end="", flush=True)
+        time.sleep(2)
+        arquivo = genai.get_file(arquivo.name)
+
+    if arquivo.state.name == "FAILED":
+        raise ValueError(f"O processamento do arquivo {caminho_arquivo} falhou.")
+
+    print(f"\nArquivo pronto: {arquivo.name}")
+    return arquivo
+
+
 # --- Modelo de Domínio ---
 def etapa_0_prep_modelo_dominio(
-    llm, dominio, n_topicos=10, audiencia="1° ano do ensino médio"
+    transcricao_audio="",
+    caminhos_pdf=None,
+    n_topicos=10,
+    audiencia="1° ano do ensino médio",
 ):
     """
-    Define o Modelo de Domínio em tópicos, cada um com explicação, pré-requisito, e exercício.
+    Gera o Modelo de Domínio, extraindo informações da transcrição e PDFs fornecidos,
+    em tópicos, cada um com explicação, pré-requisito, e exercício.
     """
-    prompt_dominio = f"""
-    Você é especializado no domínio `{dominio}`.
-    Pense nos {n_topicos} tópicos mais relevantes para a audiência "{audiencia}".
-    Para cada tópico, precisará de (1) uma explicação espontâneamente simples,
-    (2) a lista dos outros tópicos que são pré-requisitos deste tópico e (3) um
-    exercício para avaliar a compreensão do tópico.
-    As explicações e exercícios devem ser auto-contidos, não referenciando outras frases.
-    O formato da sua saída deverá ser um json válido.
+    if caminhos_pdf is None:
+        caminhos_pdf = []
+
+    # 1. Preparar os arquivos PDF (Upload para o Gemini)
+    arquivos_processados = []
+    for caminho in caminhos_pdf:
+        try:
+            arq = upload_e_processar_arquivo(caminho)
+            arquivos_processados.append(arq)
+        except Exception as e:
+            print(f"Erro ao processar PDF {caminho}: {e}")
+
+    # 2. Construir o Prompt de Sistema e Instruções
+    prompt_texto = f"""
+    Você é um especialista pedagógico encarregado de criar um currículo.
+    Sua tarefa é analisar o CONTEÚDO FORNECIDO (transcrição de áudio e documentos) e 
+    estruturar um Modelo de Domínio.
+
+    AUDIÊNCIA ALVO: {audiencia}
+    
+    INSTRUÇÕES:
+    1. Analise o texto da transcrição e o conteúdo dos PDFs anexos.
+    2. Identifique os {n_topicos} tópicos mais importantes abordados nestes materiais.
+    3. Para cada tópico, gere:
+       - (1) Uma explicação simples baseada no material.
+       - (2) Pré-requisitos (outros tópicos desta lista necessários para entender o atual).
+       - (3) Um exercício para avaliar a compreensão.
+    
+    IMPORTANTE: 
+    - Limite-se ao escopo do material fornecido. Se o material for insuficiente, infira o mínimo necessário para manter a coerência.
+    - O formato da sua saída DEVE ser estritamente um JSON válido.
     """
-    # Exemplo para servir de base para construção automática de novas bases de conhecimento
+
+    # Exemplo de JSON
     exemplo_base_conhecimento = {
-        "soma_fracoes": {
-            "explicacao": "Para somar frações, primeiro encontre um denominador comum. Depois, some os numeradores.",
-            "pre_requisitos": ["denominador_comum"],
-            "exercicio": "Quanto é 1/2 + 1/4?",
-        },
-        "denominador_comum": {
-            "explicacao": "O denominador comum é um múltiplo compartilhado pelos denominadores de duas ou mais frações.",
+        "conceito_chave_do_texto": {
+            "explicacao": "Explicação extraída do contexto fornecido...",
             "pre_requisitos": [],
-            "exercicio": "Qual é o menor denominador comum para 1/3 e 1/5?",
+            "exercicio": "Pergunta baseada no texto?",
         },
-        "subtracao_fracoes": {
-            "explicacao": "A subtração de frações segue a mesma lógica da soma: encontre um denominador comum e depois subtraia os numeradores.",
-            "pre_requisitos": ["denominador_comum", "soma_fracoes"],
-            "exercicio": "Quanto é 3/4 - 1/4?",
+        "conceito_avancado": {
+            "explicacao": "...",
+            "pre_requisitos": ["conceito_chave_do_texto"],
+            "exercicio": "...",
         },
     }
-    # Transformar o dicionário acima em uma string mais legível:
-    exemplo_base_conhecimento = json.dumps(exemplo_base_conhecimento, indent=4)
-    prompt_dominio += f"\n Exemplo:\n {exemplo_base_conhecimento}"
-    # Gerar modelo de domínio
-    modelo_dominio = llm.generate_content(prompt_dominio).text
+    prompt_texto += f"\n Exemplo de Formato JSON:\n {json.dumps(exemplo_base_conhecimento, indent=4)}"
 
-    match = re.search(r"\{.*\}", modelo_dominio, re.DOTALL)
+    # 3. Montar a lista de conteúdos para o modelo (Multimodal)
+    conteudo_envio = [prompt_texto]
+
+    if transcricao_audio:
+        conteudo_envio.append(
+            f"\n--- INÍCIO DA TRANSCRIÇÃO DO ÁUDIO ---\n{transcricao_audio}\n--- FIM DA TRANSCRIÇÃO ---\n"
+        )
+
+    # Adicionar os objetos de arquivo PDF
+    conteudo_envio.extend(arquivos_processados)
+
+    print("--- Gerando Modelo de Domínio baseado nos arquivos/áudio... ---")
+
+    # 4. Chamada ao LLM
+    # Nota: passamos uma lista contendo strings e objetos de arquivo
+    resposta_modelo = llm.generate_content(conteudo_envio).text
+
+    # 5. Tratamento da Resposta (Regex e JSON Load - mantido do seu código)
+    match = re.search(r"\{.*\}", resposta_modelo, re.DOTALL)
 
     if not match:
-        print(f"--- ERRO: LLM não retornou JSON ---\n{modelo_dominio}")
-        return {
-            "ERRO": {
-                "explicacao": "Erro na resposta da LLM",
-                "pre_requisitos": [],
-                "exercicio": "",
-            }
-        }
+        print(f"--- ERRO: LLM não retornou JSON ---\n{resposta_modelo}")
+        return {}
 
     json_limpo = match.group(0)
 
     try:
-        modelo_dominio_em_dict = json.loads(json_limpo)
+        modelo_dominio_em_dict = carregar_json(json_limpo)
         return modelo_dominio_em_dict
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         print(f"--- ERRO: JSON MAL FORMADO --- \n{json_limpo}")
-        print(f"Erro específico: {e}")
-        return {
-            "ERRO": {
-                "explicacao": "Erro na resposta da LLM",
-                "pre_requisitos": [],
-                "exercicio": "",
-            }
-        }
+        return {}
 
 
 # --- Modelo do Aluno ---
@@ -100,7 +166,7 @@ def etapa_0_inicializar_aluno(modelo_dominio):
 
 
 # --- Modelo Pedagógico ---
-def etapa_1_selecao_proximo_topico(llm, modelo_aluno):
+def etapa_1_selecao_proximo_topico(modelo_aluno):
     """
     Usa o LLM para decidir qual a próxima tarefa (Macro-Adaptação).
     """
@@ -127,7 +193,7 @@ def etapa_1_selecao_proximo_topico(llm, modelo_aluno):
     json_limpo = match.group(0)
 
     try:
-        decisao_em_dict = json.loads(json_limpo)
+        decisao_em_dict = carregar_json(json_limpo)
         return decisao_em_dict
     except json.JSONDecodeError as e:
         print(f"--- ERRO: JSON MAL FORMADO --- \n{json_limpo}")
@@ -138,12 +204,12 @@ def etapa_1_selecao_proximo_topico(llm, modelo_aluno):
         }
 
 
-def etapa_3_avaliacao_interacao_inicial(llm, chat, modelo_aluno, topico_atual):
+def etapa_3_avaliacao_interacao_inicial(historico, modelo_aluno, topico_atual):
     """
     Usa o LLM para avaliar a resposta inicial e atualizar o modelo do aluno.
     """
-    mensagem_usuario = get_text_from_message(chat.history[-1])
-    pergunta_exercicio = get_text_from_message(chat.history[-2])
+    mensagem_usuario = get_text_from_message(historico[-1])
+    pergunta_exercicio = get_text_from_message(historico[-2])
 
     prompt_avaliacao = f"""
     Você é um professor e avaliador em um Sistema de Tutoria Inteligente (ITS).
@@ -189,7 +255,7 @@ def etapa_3_avaliacao_interacao_inicial(llm, chat, modelo_aluno, topico_atual):
             return avaliacao, modelo_aluno
 
         json_limpo = match.group(0)
-        avaliacao_json = json.loads(json_limpo)
+        avaliacao_json = carregar_json(json_limpo)
 
         novo_nivel = avaliacao_json.get("novo_nivel_maestria")
         topico_avaliado = avaliacao_json.get("topico_avaliado")
@@ -214,14 +280,14 @@ def etapa_3_avaliacao_interacao_inicial(llm, chat, modelo_aluno, topico_atual):
         return avaliacao, modelo_aluno
 
 
-def etapa_45_decidir_e_gerar_feedback(chat, exercicio):
+def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno):
     """
     Usa o LLM para avaliar a resposta e gerar feedback adaptativo (Micro-Adaptação).
     """
-    resposta_aluno = get_text_from_message(chat.history[-1])
     prompt_feedback = f"""
     --- Decisão de feedback ---
     Como ITS, Avalie a resposta do aluno e forneça um feedback útil.
+    Não precisa dizer "Olá" ou qualquer tipo de saudação, você já está inserido no contexto de uma conversa.
     Exercício Proposto: *"{exercicio}"*
     Resposta do Aluno: **"{resposta_aluno}"**
     Pense passo a passo:
@@ -231,15 +297,14 @@ def etapa_45_decidir_e_gerar_feedback(chat, exercicio):
     4. Formule sua resposta final para o aluno.
     ----------------------------
     Responda somente com o feedback
-
+    Dê o feedback direto para o aluno (sem JSON).
     Feedback:
     """
-    resposta = chat.send_message(prompt_feedback)
-    return resposta.text
+    return llm.generate_content(prompt_feedback).text
 
 
 # --- Modelo do Aluno ---
-def etapa_7_atualizacao_pos_feedback(llm, chat, modelo_aluno):
+def etapa_7_atualizacao_pos_feedback(chat, modelo_aluno):
     """
     Atualiza o modelo do aluno com base no último ciclo de conversa.
     """
@@ -289,6 +354,8 @@ def etapa_7_atualizacao_pos_feedback(llm, chat, modelo_aluno):
         - "necessita_reajuste": (boolean, True se a reação contradiz a maestria)
         - "novo_nivel_sugerido": (string, o nível para rebaixar, ex: "iniciante", ou "null" se não houver reajuste)
         - "raciocinio": (string, sua breve explicação)
+
+        SEMPRE responda de acordo com o formato acima, mesmo se a resposta do aluno não fizer sentido.
         """
         try:
             resposta_bruta = llm.generate_content(prompt_reavaliacao).text
@@ -301,7 +368,7 @@ def etapa_7_atualizacao_pos_feedback(llm, chat, modelo_aluno):
                 return modelo_aluno
 
             json_limpo = match.group(0)
-            reavaliacao_json = json.loads(json_limpo)
+            reavaliacao_json = carregar_json(json_limpo)
 
             necessita_reajuste = reavaliacao_json.get("necessita_reajuste", False)
 
@@ -336,7 +403,7 @@ def etapa_7_atualizacao_pos_feedback(llm, chat, modelo_aluno):
             return modelo_aluno
 
 
-def sistema_tutoria_inteligente_genai(llm, modelo_dominio):
+def sistema_tutoria_inteligente_genai(modelo_dominio):
     """
     Inicia uma nova sessão de tutoria.
     """
@@ -355,7 +422,7 @@ def sistema_tutoria_inteligente_genai(llm, modelo_dominio):
     # Enquanto houver topicos a aprender...
     while modelo_aluno:
         # Etapa 1
-        decisao = etapa_1_selecao_proximo_topico(llm, modelo_aluno)
+        decisao = etapa_1_selecao_proximo_topico(modelo_aluno)
         topico_atual = decisao.get("proximo_topico")
 
         explicacao = modelo_dominio[topico_atual]["explicacao"]
@@ -382,7 +449,7 @@ def sistema_tutoria_inteligente_genai(llm, modelo_dominio):
 
         # Etapa 3
         avaliacao, modelo_aluno = etapa_3_avaliacao_interacao_inicial(
-            llm, chat, modelo_aluno, topico_atual
+            chat, modelo_aluno, topico_atual
         )
 
         # Etapas 4 e 5
@@ -396,7 +463,7 @@ def sistema_tutoria_inteligente_genai(llm, modelo_dominio):
         chat.history.append({"role": "user", "parts": [{"text": mensagem_usuario}]})
 
         # Etapa 7
-        modelo_aluno = etapa_7_atualizacao_pos_feedback(llm, chat, modelo_aluno)
+        modelo_aluno = etapa_7_atualizacao_pos_feedback(chat, modelo_aluno)
 
         # Condição de parada: ter aprendido todos os tópicos
         if modelo_aluno[topico_atual] == "avançado":
