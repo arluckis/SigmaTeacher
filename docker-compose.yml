@@ -8,6 +8,8 @@ services:
       - .:/app  # Sincroniza sua pasta com o Docker (mudou código aqui, muda lá)
     ports:
       - "8000:8000"
+    env_file:
+      - .env
 
   # Serviço 2: Seu Site (Streamlit)
   frontend:
