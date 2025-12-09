@@ -315,7 +315,7 @@ with aba_config_its:
                             # Salvar na sessão
                             st.session_state.session_id = dados['session_id']
                             st.session_state.mensagem_bot = dados['mensagem_bot']
-                            st.session_state.topico_atual = dados['topico']
+                            st.session_state.topico_atual = dados['topico_atual']
                             st.session_state.chat_iniciado = True
                             
                             st.info(f"📌 Sessão ID: {dados['session_id']}")

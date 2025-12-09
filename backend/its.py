@@ -220,26 +220,29 @@ def etapa_1_selecao_proximo_topico(modelo_aluno, modelo_dominio):
     # Se chegou aqui, todos foram compreendidos
     return None
 
-
 def etapa_3_avaliacao_interacao_inicial(historico, modelo_aluno, topico_atual, modelo_dominio):
     """Analisa a resposta do aluno e atualiza o modelo"""
     if not historico or len(historico) < 1:
-        return None
+        return None, modelo_aluno
     
-    ultima_resposta = historico[-1].get("content", "")
+    # AJUSTE: Usar a função auxiliar para extrair texto do formato Gemini
+    ultima_mensagem = historico[-1]
+    texto_resposta = get_text_from_message(ultima_mensagem)
+    
     topico_info = modelo_dominio.get(topico_atual, {})
     
     prompt_avaliacao = f"""
     Analise a resposta do aluno para esta pergunta:
     
+    Tópico: {topico_atual}
     Pergunta: {topico_info.get('exercicio', '')}
-    Resposta do aluno: {ultima_resposta}
+    Resposta do aluno: {texto_resposta}
     
     Retorne um JSON com:
     {{
         "acertou": true|false,
         "compreensao": 0-100,
-        "feedback": "Feedback específico para o aluno"
+        "feedback_tecnico": "Breve análise técnica do erro ou acerto"
     }}
     """
     
@@ -247,46 +250,52 @@ def etapa_3_avaliacao_interacao_inicial(historico, modelo_aluno, topico_atual, m
         resposta = llm.generate_content(prompt_avaliacao)
         match = re.search(r'\{.*\}', resposta.text, re.DOTALL)
         
+        resultado = {}
         if match:
             resultado = json.loads(match.group(0))
             
             # Atualizar modelo do aluno
             if topico_atual in modelo_aluno["topicos_status"]:
-                modelo_aluno["topicos_status"][topico_atual]["tentativas"] += 1
+                stats = modelo_aluno["topicos_status"][topico_atual]
+                stats["tentativas"] += 1
                 if resultado.get("acertou"):
-                    modelo_aluno["topicos_status"][topico_atual]["acertos"] += 1
-                modelo_aluno["topicos_status"][topico_atual]["compreensao"] = resultado.get("compreensao", 0)
+                    stats["acertos"] += 1
                 
-                # Atualizar status
-                if resultado.get("compreensao", 0) >= 70:
-                    modelo_aluno["topicos_status"][topico_atual]["status"] = "compreendido"
+                # Média ponderada simples para nova compreensão ou substituição
+                stats["compreensao"] = resultado.get("compreensao", 0)
+                
+                # Atualizar status baseado na nota
+                if stats["compreensao"] >= 70:
+                    stats["status"] = "compreendido"
                 else:
-                    modelo_aluno["topicos_status"][topico_atual]["status"] = "em_progresso"
+                    stats["status"] = "em_progresso"
             
-            return resultado
-        return None
+        return resultado, modelo_aluno # Retorna a tupla
     except Exception as e:
         print(f"Erro na avaliação: {e}")
-        return None
+        return None, modelo_aluno
 
-def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno, modelo_dominio, topico_atual):
+def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno, modelo_dominio, topico_atual, acertou):
     """Gera feedback para o aluno e decide próximo passo"""
+    
+    # Contexto emocional muda se ele acertou ou errou
+    tom = "Parabenize e avance." if acertou else "Seja paciente, dê uma dica e peça para tentar de novo ou explique o conceito."
+    
     prompt_feedback = f"""
-    Você é um tutor educacional paciente e encorajador.
+    Você é um tutor educacional.
+    Contexto: O aluno respondeu ao exercício sobre "{topico_atual}".
+    Status da resposta: {"Correta" if acertou else "Incorreta"}.
     
     Exercício: {exercicio}
     Resposta do aluno: {resposta_aluno}
-    Tópico: {topico_atual}
+    
+    Instrução: {tom}
     
     Retorne um JSON com:
     {{
-        "acertou": true|false,
-        "feedback": "Feedback construtivo e encorajador (2-3 linhas)",
-        "compreensao_estimada": 0-100,
-        "proxima_acao": "fazer_pergunta|parabens|revisar_conceito"
+        "mensagem_ao_aluno": "O texto que será enviado ao aluno (use markdown, negrito, etc).",
+        "proxima_acao": "avancar" se acertou else "revisar"
     }}
-    
-    Seja sempre positivo e encorajador, mesmo em erros!
     """
     
     try:
@@ -295,10 +304,10 @@ def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno, modelo_dominio,
         
         if match:
             return json.loads(match.group(0))
-        return None
+        return {"mensagem_ao_aluno": "Não consegui gerar um feedback específico. Vamos continuar?", "proxima_acao": "revisar"}
     except Exception as e:
         print(f"Erro ao gerar feedback: {e}")
-        return None
+        return {"mensagem_ao_aluno": "Erro interno no feedback.", "proxima_acao": "revisar"}
 
 
 def etapa_7_atualizacao_pos_feedback(historico, modelo_aluno, modelo_dominio):
