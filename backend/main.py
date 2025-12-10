@@ -30,7 +30,9 @@ class AudioLog(Base):
     filename_original = Column(String)  # Nome que o usuário mandou
     caminho_arquivo = Column(String)  # Onde salvamos no disco
     transcricao = Column(Text)  # O texto gerado pelo Whisper
-    transcricao_editada = Column(Text, nullable=True)  # Transcrição editada pelo usuário
+    transcricao_editada = Column(
+        Text, nullable=True
+    )  # Transcrição editada pelo usuário
     data_criacao = Column(DateTime, default=datetime.utcnow)
 
 
@@ -132,18 +134,16 @@ def listar(db: Session = Depends(get_db)):
 # Rota para editar transcrição
 @app.put("/editar-transcricao/{audio_id}")
 async def editar_transcricao(
-    audio_id: int, 
-    nova_transcricao: dict, 
-    db: Session = Depends(get_db)
+    audio_id: int, nova_transcricao: dict, db: Session = Depends(get_db)
 ):
     """Edita a transcrição de um áudio"""
     audio = db.query(AudioLog).filter(AudioLog.id == audio_id).first()
     if not audio:
         raise HTTPException(status_code=404, detail="Áudio não encontrado")
-    
+
     audio.transcricao_editada = nova_transcricao.get("transcricao", audio.transcricao)
     db.commit()
-    
+
     return {
         "status": "sucesso",
         "id": audio.id,
@@ -155,32 +155,78 @@ async def editar_transcricao(
 async def upload_arquivos(
     files: List[UploadFile] = File(...),
     audio_ids: List[int] = [],
-    db: Session = Depends(get_db),
 ):
     """
     Valida os arquivos enviados para o ITS.
     Retorna lista de arquivos salvos temporariamente.
     """
     caminhos_salvos = []
-    
+
     for file in files:
         if file.filename.endswith((".pdf", ".jpeg", ".jpg", ".png", ".csv")):
             temp_path = f"uploads/temp_{uuid.uuid4()}_{file.filename}"
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             caminhos_salvos.append({"arquivo": file.filename, "caminho": temp_path})
-    
+
     # Validar que pelo menos uma aula foi selecionada
     if not audio_ids:
         return {
             "status": "erro",
-            "detalhe": "Selecione pelo menos uma aula para iniciar o ITS"
+            "detalhe": "Selecione pelo menos uma aula para iniciar o ITS",
         }
-    
+
     return {
         "status": "sucesso",
         "arquivos_salvos": caminhos_salvos,
         "audio_ids": audio_ids,
+    }
+
+
+@app.get("/its/sessoes")
+def listar_sessoes(db: Session = Depends(get_db)):
+    """Retorna uma lista simplificada das sessões para o aluno selecionar"""
+    sessoes = (
+        db.query(TutoriaSession).order_by(TutoriaSession.data_criacao.desc()).all()
+    )
+
+    lista_retorno = []
+    for s in sessoes:
+        topico = s.topico_atual or "Geral"
+
+        lista_retorno.append(
+            {
+                "id": s.id,
+                "topico": topico,
+                "status": s.status,
+                "data_criacao": s.data_criacao.isoformat() if s.data_criacao else None,
+            }
+        )
+    return lista_retorno
+
+
+@app.get("/its/sessao/{session_id}")
+def obter_sessao(session_id: int, db: Session = Depends(get_db)):
+    """Retorna o histórico e estado atual de uma sessão para o frontend restaurar"""
+    sessao = db.query(TutoriaSession).filter(TutoriaSession.id == session_id).first()
+    if not sessao:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+
+    # Carregar histórico para enviar ao frontend formatado
+    historico_bruto = its.carregar_json(sessao.historico_chat)
+
+    # Converter formato do Gemini/LLM para formato do Streamlit (role: user/assistant)
+    mensagens_frontend = []
+    for h in historico_bruto:
+        role = "user" if h.get("role") == "user" else "assistant"
+        content = h.get("parts", [{}])[0].get("text", "")
+        mensagens_frontend.append({"role": role, "content": content})
+
+    return {
+        "id": sessao.id,
+        "topico_atual": sessao.topico_atual,
+        "status": sessao.status,
+        "mensagens": mensagens_frontend,
     }
 
 
@@ -195,8 +241,6 @@ class IniciarTutoriaRequest(BaseModel):
     n_topicos: int = 5
     audiencia: str = "1° ano do ensino médio"
 
-
-# backend/main.py (Trecho das rotas ITS)
 
 @app.post("/its/iniciar")
 async def iniciar_tutoria(
@@ -233,21 +277,21 @@ async def iniciar_tutoria(
         if os.path.exists(path):
             try:
                 os.remove(path)
-            except:
+            except Exception:
                 pass
 
     # --- 3. Inicializar Aluno ---
     modelo_aluno = its.etapa_0_inicializar_aluno(modelo_dominio)
-    
+
     # --- 4. Selecionar 1º Tópico ---
     topico_inicial = its.etapa_1_selecao_proximo_topico(modelo_aluno, modelo_dominio)
-    
+
     if not topico_inicial:
         # Caso raro onde já começa concluído ou erro
         topico_inicial = list(modelo_dominio.keys())[0] if modelo_dominio else "Geral"
 
     topico_info = modelo_dominio.get(topico_inicial, {})
-    
+
     mensagem_bot = (
         f"👋 **Bem-vindo à sua tutoria!**\n\n"
         f"Vamos começar estudando: **{topico_inicial}**\n\n"
@@ -264,7 +308,7 @@ async def iniciar_tutoria(
         modelo_aluno=its.salvar_json(modelo_aluno),
         historico_chat=its.salvar_json(historico_inicial),
         topico_atual=topico_inicial,
-        status="aguardando_resposta_exercicio"
+        status="aguardando_resposta_exercicio",
     )
 
     db.add(sessao)
@@ -276,7 +320,7 @@ async def iniciar_tutoria(
         "session_id": sessao.id,
         "topico_atual": topico_inicial,
         "mensagem_bot": mensagem_bot,
-        "exercicio": topico_info.get("exercicio", "")
+        "exercicio": topico_info.get("exercicio", ""),
     }
 
 
@@ -285,7 +329,9 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
     """
     Ciclo de feedback e adaptação.
     """
-    sessao = db.query(TutoriaSession).filter(TutoriaSession.id == dados.session_id).first()
+    sessao = (
+        db.query(TutoriaSession).filter(TutoriaSession.id == dados.session_id).first()
+    )
     if not sessao:
         raise HTTPException(status_code=404, detail="Sessão não encontrada")
 
@@ -294,12 +340,12 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
     mod_aluno = its.carregar_json(sessao.modelo_aluno)
     historico = its.carregar_json(sessao.historico_chat)
     topico_atual = sessao.topico_atual
-    
+
     # Adicionar resposta do usuário ao histórico
     historico.append({"role": "user", "parts": [{"text": dados.mensagem}]})
 
     resposta_final_bot = ""
-    proxima_acao = "revisar" # padrão
+    proxima_acao = "revisar"  # padrão
 
     # --- LÓGICA DO ESTADO ---
 
@@ -308,18 +354,20 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
         resultado_avaliacao, mod_aluno = its.etapa_3_avaliacao_interacao_inicial(
             historico, mod_aluno, topico_atual, mod_dominio
         )
-        
-        acertou = resultado_avaliacao.get("acertou", False) if resultado_avaliacao else False
+
+        acertou = (
+            resultado_avaliacao.get("acertou", False) if resultado_avaliacao else False
+        )
 
         # 2. Gerar Feedback (Etapa 4/5)
         exercicio_atual = mod_dominio.get(topico_atual, {}).get("exercicio", "")
-        
+
         resultado_feedback = its.etapa_45_decidir_e_gerar_feedback(
             exercicio=exercicio_atual,
             resposta_aluno=dados.mensagem,
             modelo_dominio=mod_dominio,
             topico_atual=topico_atual,
-            acertou=acertou
+            acertou=acertou,
         )
 
         feedback_texto = resultado_feedback.get("mensagem_ao_aluno", "")
@@ -327,21 +375,25 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
 
         if acertou or proxima_acao == "avancar":
             resposta_final_bot = f"{feedback_texto}\n\n🎉 **Muito bem! Vamos avançar?** (Responda qualquer coisa para continuar)"
-            sessao.status = "aguardando_transicao" # Estado intermediário para o aluno ler o feedback
+            sessao.status = "aguardando_transicao"  # Estado intermediário para o aluno ler o feedback
         else:
             resposta_final_bot = f"{feedback_texto}\n\n🔄 **Tente explicar novamente com suas palavras ou peça uma dica.**"
-            sessao.status = "aguardando_resposta_exercicio" # Mantém no loop de exercício
+            sessao.status = (
+                "aguardando_resposta_exercicio"  # Mantém no loop de exercício
+            )
 
     elif sessao.status == "aguardando_transicao":
         # O aluno leu o feedback positivo e respondeu "ok", "vamos", etc.
         # Agora selecionamos o próximo tópico (Etapa 7 e 1)
-        
+
         # Atualiza progresso geral (Etapa 7)
-        mod_aluno = its.etapa_7_atualizacao_pos_feedback(historico, mod_aluno, mod_dominio)
-        
+        mod_aluno = its.etapa_7_atualizacao_pos_feedback(
+            historico, mod_aluno, mod_dominio
+        )
+
         # Seleciona próximo tópico (Etapa 1)
         novo_topico = its.etapa_1_selecao_proximo_topico(mod_aluno, mod_dominio)
-        
+
         if not novo_topico:
             # Não há mais tópicos pendentes
             resposta_final_bot = "🎓 **Parabéns! Você concluiu todos os tópicos planejados para esta aula.**"
@@ -350,16 +402,18 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
             # Avança para o próximo
             sessao.topico_atual = novo_topico
             topico_info = mod_dominio.get(novo_topico, {})
-            
+
             resposta_final_bot = (
                 f"🚀 **Próximo Tópico: {novo_topico}**\n\n"
                 f"📖 {topico_info.get('explicacao', '')}\n\n"
                 f"✍️ **Exercício:** {topico_info.get('exercicio', '')}"
             )
             sessao.status = "aguardando_resposta_exercicio"
-            
+
     elif sessao.status == "concluido":
-        resposta_final_bot = "O curso já foi concluído! Você pode iniciar uma nova sessão se desejar."
+        resposta_final_bot = (
+            "O curso já foi concluído! Você pode iniciar uma nova sessão se desejar."
+        )
 
     else:
         # Fallback para estados desconhecidos
@@ -371,7 +425,7 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
 
     sessao.modelo_aluno = its.salvar_json(mod_aluno)
     sessao.historico_chat = its.salvar_json(historico)
-    
+
     db.commit()
 
     return {
@@ -379,7 +433,7 @@ async def responder_chat(dados: UserResponse, db: Session = Depends(get_db)):
         "mensagem_bot": resposta_final_bot,
         "status_atual": sessao.status,
         "topico_atual": sessao.topico_atual,
-        "progresso": mod_aluno.get("progresso_total", 0)
+        "progresso": mod_aluno.get("progresso_total", 0),
     }
 
 
