@@ -88,23 +88,25 @@ def etapa_0_prep_modelo_dominio(
 
     # 2. Construir o Prompt de Sistema e Instruções
     prompt_dominio = f"""
-    Você é um especialista em currículo e pedagogia. Sua tarefa é analisar o conteúdo de uma aula
+    Você é um especialista em currículo e pedagogia. 
+    Sua tarefa é analisar o CONTEÚDO FORNECIDO (transcrição de áudio e documentos) de uma aula
     e estruturá-lo em um modelo de domínio educacional.
     
     Baseado no seguinte conteúdo de aula:
     
     {transcricao_audio}
     
-    Extraia e estruture exatamente {n_topicos} tópicos principais para ensinar a alunos de {audiencia}.
+    Analise o conteúdo fornecido e com base nele, extraia e estruture exatamente {n_topicos} tópicos principais para ensinar a alunos de {audiencia}.
     
     IMPORTANTE: Retorne OBRIGATORIAMENTE um JSON válido com a seguinte estrutura:
     {{
         "topicos": [
             {{
                 "nome": "Nome do Tópico",
-                "explicacao": "Explicação clara e concisa do tópico",
+                "explicacao": "Explicação clara e concisa a respeito do tópico",
                 "prerequisito": "Conhecimento necessário antes de aprender este tópico",
-                "exercicio": "Uma pergunta ou atividade prática para avaliar compreensão",
+                "exercicio": "Uma pergunta de múltipla escolha com 4 alternativas, e apenas 1 correta. 
+                    Não centralize as respostas corretas em apenas uma alternativa, varie entre as opções.",
                 "dificuldade": "iniciante|intermediario|avancado"
             }},
             ...mais tópicos...
@@ -113,11 +115,12 @@ def etapa_0_prep_modelo_dominio(
     }}
     
     Certifique-se que:
-    1. O JSON é válido e bem formado
-    2. Todos os campos obrigatórios estão preenchidos
-    3. Os tópicos são pedagogicamente sequenciados
-    4. Cada tópico tem um exercício prático específico
-    5. A sequência recomendada segue ordem de dificuldade
+    1. Limite-se ao escopo do material fornecido. Se o material for insuficiente, infira o mínimo necessário para manter a coerência.
+    2. O JSON é válido e bem formado
+    3. Todos os campos obrigatórios (nome, explicacao, exercicio e dificuldade) estão preenchidos
+    4. Os tópicos são pedagogicamente sequenciados
+    5. Cada tópico tem um exercício específico
+    6. A sequência recomendada segue ordem de dificuldade
     """
 
     # 3. Enviar para o Gemini
@@ -166,7 +169,7 @@ def etapa_0_prep_modelo_dominio(
         
         modelo_formatado["_sequencia"] = modelo_dict.get("sequencia_recomendada", list(modelo_formatado.keys()))
         
-        print(f"✅ Modelo de Domínio gerado com sucesso: {len(modelo_formatado)-1} tópicos")
+        print(f"Modelo de Domínio gerado com sucesso: {len(modelo_formatado)-1} tópicos")
         return modelo_formatado
     
     except json.JSONDecodeError as e:
@@ -179,7 +182,9 @@ def etapa_0_prep_modelo_dominio(
 
 # --- Modelo do Aluno ---
 def etapa_0_inicializar_aluno(modelo_dominio):
-    """Cria um modelo do aluno inicializado com todos os tópicos em nível 'não iniciado'"""
+    """
+        Cria um modelo do aluno inicializado com todos os tópicos em nível 'não iniciado'
+    """
     if not modelo_dominio:
         return None
     
@@ -205,7 +210,9 @@ def etapa_0_inicializar_aluno(modelo_dominio):
 
 # --- Modelo Pedagógico ---
 def etapa_1_selecao_proximo_topico(modelo_aluno, modelo_dominio):
-    """Seleciona o próximo tópico a ser ensinado"""
+    """
+        Seleciona o próximo tópico a ser ensinado
+    """
     if not modelo_aluno or not modelo_dominio:
         return None
     
@@ -220,8 +227,11 @@ def etapa_1_selecao_proximo_topico(modelo_aluno, modelo_dominio):
     # Se chegou aqui, todos foram compreendidos
     return None
 
+
 def etapa_3_avaliacao_interacao_inicial(historico, modelo_aluno, topico_atual, modelo_dominio):
-    """Analisa a resposta do aluno e atualiza o modelo"""
+    """
+        Analisa a resposta do aluno e atualiza o modelo
+    """
     if not historico or len(historico) < 1:
         return None, modelo_aluno
     
@@ -275,20 +285,27 @@ def etapa_3_avaliacao_interacao_inicial(historico, modelo_aluno, topico_atual, m
         print(f"Erro na avaliação: {e}")
         return None, modelo_aluno
 
+
 def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno, modelo_dominio, topico_atual, acertou):
-    """Gera feedback para o aluno e decide próximo passo"""
+    """
+        Gera feedback para o aluno e decide próximo passo
+    """
     
     # Contexto emocional muda se ele acertou ou errou
-    tom = "Parabenize e avance." if acertou else "Seja paciente, dê uma dica e peça para tentar de novo ou explique o conceito."
+    tom = ""
+    if acertou:
+        tom = "Parabenize e avance." 
+    else:
+        tom = "Seja paciente, dê uma dica e peça para tentar de novo ou explique o conceito."
     
     prompt_feedback = f"""
-    Você é um tutor educacional.
+    Você é um tutor educacional. Avalie a resposta do aluno e forneça um feedback útil.
+    Não precisa dizer "Olá" ou qualquer tipo de saudação, você já está inserido no contexto de uma conversa.
     Contexto: O aluno respondeu ao exercício sobre "{topico_atual}".
     Status da resposta: {"Correta" if acertou else "Incorreta"}.
     
     Exercício: {exercicio}
     Resposta do aluno: {resposta_aluno}
-    
     Instrução: {tom}
     
     Retorne um JSON com:
@@ -311,7 +328,9 @@ def etapa_45_decidir_e_gerar_feedback(exercicio, resposta_aluno, modelo_dominio,
 
 
 def etapa_7_atualizacao_pos_feedback(historico, modelo_aluno, modelo_dominio):
-    """Atualiza modelo do aluno após feedback e calcula progresso geral"""
+    """
+        Atualiza modelo do aluno após feedback e calcula progresso geral
+    """
     topicos_status = modelo_aluno.get("topicos_status", {})
     
     total_topicos = len(topicos_status)
@@ -332,7 +351,9 @@ def etapa_7_atualizacao_pos_feedback(historico, modelo_aluno, modelo_dominio):
 
 
 def sistema_tutoria_inteligente_genai(modelo_dominio, modelo_aluno, historico_chat):
-    """Orquestra todo o sistema de tutoria"""
+    """
+        Orquestra todo o sistema de tutoria
+    """
     if not modelo_dominio or not modelo_aluno:
         return None
     

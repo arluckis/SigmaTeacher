@@ -164,7 +164,7 @@ async def upload_arquivos(
     caminhos_salvos = []
 
     for file in files:
-        if file.filename.endswith((".pdf", ".jpeg", ".jpg", ".png", ".csv")):
+        if file.filename.endswith((".pdf", ".PDF")):
             temp_path = f"uploads/temp_{uuid.uuid4()}_{file.filename}"
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
