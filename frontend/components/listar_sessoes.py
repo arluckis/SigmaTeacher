@@ -73,7 +73,7 @@ def render_listar_sessoes(
                 if mostrar_botao_entrar:
                     if st.button("▶️ Entrar", key=f"btn_entrar_{sessao['id']}"):
                         if carregar_sessao(sessao["id"]):
-                            st.success("Carregando...")
+                            st.session_state.visualizando_chat_atualmente_aluno = True
                             st.rerun()
                 if mostrar_botao_visualizar_chat:
                     if st.button(
@@ -81,5 +81,7 @@ def render_listar_sessoes(
                         key=f"btn_visualizar_chat_{sessao['id']}",
                     ):
                         if carregar_sessao(sessao["id"]):
-                            st.session_state.visualizando_chat_atualmente = True
+                            st.session_state.visualizando_chat_atualmente_professor = (
+                                True
+                            )
                             st.rerun()

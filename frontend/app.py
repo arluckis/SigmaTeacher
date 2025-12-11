@@ -14,8 +14,10 @@ if "mostrar_professor" not in st.session_state:
     st.session_state.mostrar_professor = True
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
-if "visualizando_chat_atualmente" not in st.session_state:
-    st.session_state.visualizando_chat_atualmente = False
+if "visualizando_chat_atualmente_professor" not in st.session_state:
+    st.session_state.visualizando_chat_atualmente_professor = False
+if "visualizando_chat_atualmente_aluno" not in st.session_state:
+    st.session_state.visualizando_chat_atualmente_aluno = False
 
 
 def alternar_area():

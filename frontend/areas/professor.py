@@ -324,7 +324,7 @@ def render_professor_area():
                             st.error(f"❌ Erro: {str(e)}")
 
     with aba_chat:
-        if not st.session_state.visualizando_chat_atualmente:
+        if not st.session_state.visualizando_chat_atualmente_professor:
             st.header("📖 Lista de sessões disponíveis")
             st.write("Abaixo as sessões que os alunos podem entrar.")
 
@@ -348,6 +348,6 @@ def render_professor_area():
 
 
 def alternar_visualizar_chat():
-    st.session_state.visualizando_chat_atualmente = (
-        not st.session_state.visualizando_chat_atualmente
+    st.session_state.visualizando_chat_atualmente_professor = (
+        not st.session_state.visualizando_chat_atualmente_professor
     )

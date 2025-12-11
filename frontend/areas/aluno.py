@@ -8,14 +8,7 @@ API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 
 def render_aluno_area():
-    aba_sessoes, aba_chat = st.tabs(
-        [
-            "📖 Lista de sessões disponíveis",
-            "💬 SigmaTeacher Chat",
-        ]
-    )
-
-    with aba_sessoes:
+    if not st.session_state.visualizando_chat_atualmente_aluno:
         st.header("📖 Lista de sessões disponíveis")
         st.write("Selecione uma sessão abaixo para continuar seus estudos.")
 
@@ -27,8 +20,15 @@ def render_aluno_area():
             )
 
         render_listar_sessoes()
-
-    with aba_chat:
+    else:
         st.header("💬 SigmaTeacher Chat - Sessão de Tutoria")
 
+        st.button("Voltar para listagem de sessões", on_click=alternar_visualizar_chat)
+
         render_its_chat()
+
+
+def alternar_visualizar_chat():
+    st.session_state.visualizando_chat_atualmente_aluno = (
+        not st.session_state.visualizando_chat_atualmente_aluno
+    )
