@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+requests
+streamlit
+openai-whisper
+python-multipart
+streamlit-mic-recorder
+watchfiles
+Pillow
+torchaudio
+torch
+numpy
+python-dotenv
+google-generativeai>=0.8.3
