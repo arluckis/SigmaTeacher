@@ -17,3 +17,4 @@ font = "sans serif"
 
 [server]
 maxUploadSize = 200
+runOnSave = true

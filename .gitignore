@@ -9,6 +9,7 @@ __pycache__/
 .env
 .streamlit/secrets.toml
 .vscode/
+.github/
 
 # --- Ignorar Ambientes Virtuais (se tiver) ---
 venv/
