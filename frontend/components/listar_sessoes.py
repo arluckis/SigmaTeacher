@@ -10,12 +10,11 @@ API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 def render_listar_sessoes(
     mostrar_botao_entrar: bool = True, mostrar_botao_visualizar_chat: bool = False
 ):
-    _, col_top_2 = st.columns([4, 1])
+    _, col_top_2 = st.columns([9, 1])
     with col_top_2:
         if st.button(
             "🔄 Atualizar Lista",
             key="btn_atualizar_sessoes",
-            use_container_width=True,
         ):
             st.rerun()
 

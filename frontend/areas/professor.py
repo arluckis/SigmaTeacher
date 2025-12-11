@@ -342,7 +342,6 @@ def render_professor_area():
 
             render_its_chat(
                 mostrar_audios=False,
-                mostrar_botao_nova_sessao=False,
                 mostrar_entrada_resposta=False,
             )
 

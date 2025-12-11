@@ -8,7 +8,6 @@ API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 def render_its_chat(
     mostrar_audios: bool = True,
-    mostrar_botao_nova_sessao: bool = True,
     mostrar_entrada_resposta: bool = True,
 ):
     # Inicializar estado da sessão
@@ -61,7 +60,7 @@ def render_its_chat(
 
         st.divider()
         # Exibir informações da sessão
-        col1, col2, col3 = st.columns([1, 8, 1])
+        col1, col2, _ = st.columns([1, 8, 1])
         with col1:
             st.write(f"**ID da sessão:** {st.session_state.session_id}")
         with col2:
@@ -69,16 +68,6 @@ def render_its_chat(
                 f"<div style='text-align: center; font-weight: bold;'>Tópico: {st.session_state.topico_atual}</div>",
                 unsafe_allow_html=True,
             )
-
-        with col3:
-            if mostrar_botao_nova_sessao:
-                st.markdown("<div style='text-align: right;'>", unsafe_allow_html=True)
-                if st.button("🔄 Nova Sessão", key="nova_sessao_btn"):
-                    st.session_state.chat_iniciado = False
-                    st.session_state.session_id = None
-                    st.session_state.chat_messages = []
-                    st.rerun()
-
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.divider()
