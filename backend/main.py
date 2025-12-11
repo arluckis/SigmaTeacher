@@ -47,6 +47,7 @@ class TutoriaSession(Base):
     historico_chat = Column(Text)  # Lista de mensagens para o contexto do LLM
     topico_atual = Column(String)  # O tópico sendo ensinado agora
     status = Column(String)  # "ativo", "concluido"
+    audio_ids = Column(String, default="[]")
     data_criacao = Column(DateTime, default=datetime.utcnow)
 
 
@@ -222,11 +223,29 @@ def obter_sessao(session_id: int, db: Session = Depends(get_db)):
         content = h.get("parts", [{}])[0].get("text", "")
         mensagens_frontend.append({"role": role, "content": content})
 
+    lista_audios = []
+    if sessao.audio_ids:
+        ids = its.carregar_json(sessao.audio_ids)
+        if ids:
+            audios_db = db.query(AudioLog).filter(AudioLog.id.in_(ids)).all()
+            for a in audios_db:
+                lista_audios.append(
+                    {
+                        "id": a.id,
+                        "filename_original": a.filename_original,
+                        "transcricao": a.transcricao_editada or a.transcricao,
+                        "data_criacao": a.data_criacao.isoformat()
+                        if a.data_criacao
+                        else None,
+                    }
+                )
+
     return {
         "id": sessao.id,
         "topico_atual": sessao.topico_atual,
         "status": sessao.status,
         "mensagens": mensagens_frontend,
+        "audios_contexto": lista_audios,
     }
 
 
@@ -309,6 +328,7 @@ async def iniciar_tutoria(
         historico_chat=its.salvar_json(historico_inicial),
         topico_atual=topico_inicial,
         status="aguardando_resposta_exercicio",
+        audio_ids=its.salvar_json(request.audio_ids),
     )
 
     db.add(sessao)

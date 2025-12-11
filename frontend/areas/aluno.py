@@ -17,6 +17,7 @@ def carregar_sessao(session_id):
             st.session_state.session_id = dados["id"]
             st.session_state.topico_atual = dados["topico_atual"]
             st.session_state.chat_messages = dados["mensagens"]
+            st.session_state.audios_sessao_atual = dados.get("audios_contexto", [])
             st.session_state.chat_iniciado = True
 
             # Força o 'mensagem_bot' para evitar que o chat tente reenviar msg de boas vindas
@@ -44,6 +45,8 @@ def render_aluno_area():
         st.header("📖 Lista de sessões disponíveis")
         st.write("Selecione uma sessão abaixo para continuar seus estudos.")
 
+        st.divider()
+
         if st.session_state.session_id:
             st.info(
                 f"Sessão ativa atualmente: **#{st.session_state.session_id} - {st.session_state.topico_atual}**"
@@ -57,8 +60,6 @@ def render_aluno_area():
                 use_container_width=True,
             ):
                 st.rerun()
-
-        st.divider()
 
         # Busca sessões no backend
         try:
@@ -129,12 +130,43 @@ def render_aluno_area():
         if "chat_iniciado" not in st.session_state:
             st.session_state.chat_iniciado = False
 
-        # Se não há sessão iniciada, mostrar mensagem
         if not st.session_state.chat_iniciado or not st.session_state.session_id:
             st.info(
                 "📌 Nenhuma sessão ativa. Selecione uma sessão para entrar na aba 'Lista de sessões disponíveis'."
             )
         else:
+            audios_contexto = st.session_state.get("audios_sessao_atual", [])
+
+            with st.expander(
+                "📚 Ver conteúdo das aulas originais (Transcrição)", expanded=False
+            ):
+                if audios_contexto:
+                    for audio in audios_contexto:
+                        with st.expander(
+                            f"📝 {audio['filename_original']}",
+                            expanded=False,
+                        ):
+                            try:
+                                dt_obj = datetime.fromisoformat(data_raw)
+                                data_fmt = dt_obj.strftime("%d/%m/%Y %H:%M")
+                            except ValueError:
+                                data_fmt = data_raw
+
+                            st.caption(f"Data: {data_fmt}")
+
+                            st.text_area(
+                                "Conteúdo da aula:",
+                                value=audio["transcricao"],
+                                height=10,
+                                disabled=True,
+                                key=f"view_only_{audio['id']}",
+                            )
+
+                    st.divider()
+                else:
+                    st.info("Nenhum áudio vinculado a esta sessão.")
+
+            st.divider()
             # Exibir informações da sessão
             col1, col2, col3 = st.columns([1, 8, 1])
             with col1:

@@ -103,10 +103,10 @@ def render_professor_area():
 
         st.divider()
 
-        col1, col2 = st.columns([3, 1])
+        _, col2 = st.columns([4, 1])
 
         with col2:
-            if st.button("🔄 Atualizar Lista", width="stretch"):
+            if st.button("🔄 Atualizar Lista", use_container_width=True):
                 st.rerun()
 
         # Listar áudios
@@ -114,7 +114,7 @@ def render_professor_area():
 
         if audios:
             # Exibir cada áudio em um container expansível
-            for idx, audio in enumerate(audios):
+            for _, audio in enumerate(audios):
                 with st.expander(
                     f"📝 {audio['filename_original']} - ID: {audio['id']}",
                     expanded=False,
@@ -297,27 +297,17 @@ def render_professor_area():
                             response = requests.post(
                                 f"{API_URL}/its/iniciar",
                                 json=payload,
-                                timeout=120,  # Timeout aumentado para processamento
+                                timeout=120,
                             )
 
                             if response.status_code == 200:
                                 dados = response.json()
                                 st.balloons()
-                                st.success("✅ Sessão de tutoria iniciada com sucesso!")
-
-                                # Salvar na sessão
-                                st.session_state.session_id = dados["session_id"]
-                                st.session_state.mensagem_bot = dados["mensagem_bot"]
-                                st.session_state.topico_atual = dados["topico_atual"]
-                                st.session_state.chat_iniciado = True
+                                st.success("✅ Sessão de tutoria criada com sucesso!")
 
                                 st.info(f"📌 Sessão ID: {dados['session_id']}")
                                 st.write(
                                     f"**Primeira mensagem do tutor:**\n\n{dados['mensagem_bot']}"
-                                )
-
-                                st.success(
-                                    "✨ Navegue até a aba 'SigmaTeacher Chat' para começar a aprender!"
                                 )
                             else:
                                 error_msg = response.json().get(
@@ -335,6 +325,8 @@ def render_professor_area():
         st.header("📖 Lista de sessões disponíveis")
         st.write("Abaixo as sessões que os alunos podem entrar.")
 
+        st.divider()
+
         _, col_top_2 = st.columns([4, 1])
         with col_top_2:
             if st.button(
@@ -343,8 +335,6 @@ def render_professor_area():
                 use_container_width=True,
             ):
                 st.rerun()
-
-        st.divider()
 
         # Busca sessões no backend
         try:
