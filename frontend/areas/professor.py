@@ -1,8 +1,10 @@
-from datetime import datetime
 import streamlit as st
 import requests
 from streamlit_mic_recorder import mic_recorder
 import os
+
+from components.listar_sessoes import render_listar_sessoes
+from components.its_chat import render_its_chat
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
@@ -322,65 +324,30 @@ def render_professor_area():
                             st.error(f"❌ Erro: {str(e)}")
 
     with aba_chat:
-        st.header("📖 Lista de sessões disponíveis")
-        st.write("Abaixo as sessões que os alunos podem entrar.")
-
-        st.divider()
-
-        _, col_top_2 = st.columns([4, 1])
-        with col_top_2:
-            if st.button(
-                "🔄 Atualizar Lista",
-                key="btn_atualizar_sessoes",
-                use_container_width=True,
-            ):
-                st.rerun()
-
-        # Busca sessões no backend
-        try:
-            resp = requests.get(f"{API_URL}/its/sessoes")
-            if resp.status_code == 200:
-                sessoes = resp.json()
-            else:
-                sessoes = []
-                st.error("Não foi possível buscar as sessões.")
-        except Exception:
-            sessoes = []
-            st.warning("Conecte o backend para ver as sessões.")
-
-        if not sessoes:
-            st.info("Nenhuma sessão encontrada. Peça ao professor para criar uma nova!")
-        else:
-            c1, c2, c3 = st.columns([0.5, 4, 2])
-            c1.markdown("**ID**")
-            c2.markdown("**Tópico / Data**")
-            c3.markdown("**Status**")
+        if not st.session_state.visualizando_chat_atualmente:
+            st.header("📖 Lista de sessões disponíveis")
+            st.write("Abaixo as sessões que os alunos podem entrar.")
 
             st.divider()
 
-            for sessao in sessoes:
-                c1, c2, c3 = st.columns([0.5, 4, 2])
+            render_listar_sessoes(
+                mostrar_botao_entrar=False, mostrar_botao_visualizar_chat=True
+            )
+        else:
+            st.header("💬 Visualização do Chat da Sessão de Tutoria")
 
-                with c1:
-                    st.write(f"#{sessao['id']}")
+            st.button(
+                "Voltar para listagem de sessões", on_click=alternar_visualizar_chat
+            )
 
-                with c2:
-                    st.markdown(f"**{sessao['topico']}**")
+            render_its_chat(
+                mostrar_audios=False,
+                mostrar_botao_nova_sessao=False,
+                mostrar_entrada_resposta=False,
+            )
 
-                    data_raw = sessao.get("data_criacao")
-                    if data_raw:
-                        try:
-                            dt_obj = datetime.fromisoformat(data_raw)
-                            data_fmt = dt_obj.strftime("%d/%m/%Y %H:%M")
-                        except ValueError:
-                            data_fmt = data_raw
-                    else:
-                        data_fmt = "Data desconhecida"
 
-                    st.caption(f"📅 {data_fmt}")
-
-                with c3:
-                    if sessao["status"] == "concluido":
-                        st.markdown(":green[✅ **Concluído**]")
-                    else:
-                        st.markdown(":blue[⏳ **Em andamento**]")
+def alternar_visualizar_chat():
+    st.session_state.visualizando_chat_atualmente = (
+        not st.session_state.visualizando_chat_atualmente
+    )
